@@ -172,6 +172,45 @@ export default function Home() {
     });
   }
 
+  async function rebuildPdfFromRenderedPages(sourcePdf, progressMessage) {
+    const rebuiltPdf = await window.PDFLib.PDFDocument.create();
+
+    for (let pageNumber = 1; pageNumber <= sourcePdf.numPages; pageNumber += 1) {
+      const sourcePage = await sourcePdf.getPage(pageNumber);
+      const viewport = sourcePage.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { alpha: false });
+
+      if (!context) {
+        throw new Error("Canvas is not available in this browser.");
+      }
+
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+
+      await sourcePage.render({
+        canvasContext: context,
+        viewport,
+      }).promise;
+
+      const pngBytes = await canvasToPngBytes(canvas);
+      const embeddedPage = await rebuiltPdf.embedPng(pngBytes);
+      const outputPage = rebuiltPdf.addPage([viewport.width, viewport.height]);
+
+      outputPage.drawImage(embeddedPage, {
+        x: 0,
+        y: 0,
+        width: viewport.width,
+        height: viewport.height,
+      });
+
+      setProgress(Math.round((pageNumber / sourcePdf.numPages) * 100));
+      setStatus(progressMessage(pageNumber, sourcePdf.numPages));
+    }
+
+    return rebuiltPdf;
+  }
+
   useEffect(() => {
     if (pdfJsReady && window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
@@ -250,23 +289,40 @@ export default function Home() {
       let nextFileName;
 
       if (mode === "lock") {
-        const pdfDoc = await window.PDFLib.PDFDocument.load(fileBytes);
-        setPageCount(pdfDoc.getPageCount());
-        setProgress(60);
-        setStatus(`Encrypting ${pdfDoc.getPageCount()} page(s)...`);
+        const loadingTask = window.pdfjsLib.getDocument({
+          data: fileBytes,
+        });
 
-        outputBytes = await pdfDoc.save({
+        sourcePdf = await loadingTask.promise;
+        setPageCount(sourcePdf.numPages);
+        setStatus(`Rebuilding ${sourcePdf.numPages} page(s) before locking...`);
+
+        const lockedPdf = await rebuildPdfFromRenderedPages(
+          sourcePdf,
+          (pageNumber, totalPages) => `Prepared page ${pageNumber} of ${totalPages} for locking...`
+        );
+
+        setProgress(100);
+        setStatus(`Encrypting ${sourcePdf.numPages} page(s)...`);
+
+        outputBytes = await lockedPdf.save({
+          useObjectStreams: false,
           encrypt: {
             userPassword: password,
-            ownerPassword: `${password}-owner`,
+            ownerPassword: password,
             permissions: {
               printing: true,
+              printingHighQuality: true,
               copying: false,
               modifying: false,
+              annotating: true,
+              fillingForms: true,
+              contentAccessibility: true,
+              documentAssembly: false,
             },
+            version: 4,
           },
         });
-        setProgress(100);
         setStatus("Your locked PDF is ready to download.");
         nextFileName = createOutputFileName(selectedFile.name, "locked");
       } else {
@@ -279,40 +335,10 @@ export default function Home() {
         setPageCount(sourcePdf.numPages);
         setStatus(`Decrypting and rebuilding ${sourcePdf.numPages} page(s)...`);
 
-        const unlockedPdf = await window.PDFLib.PDFDocument.create();
-
-        for (let pageNumber = 1; pageNumber <= sourcePdf.numPages; pageNumber += 1) {
-          const sourcePage = await sourcePdf.getPage(pageNumber);
-          const viewport = sourcePage.getViewport({ scale: 2 });
-          const canvas = document.createElement("canvas");
-          const context = canvas.getContext("2d", { alpha: false });
-
-          if (!context) {
-            throw new Error("Canvas is not available in this browser.");
-          }
-
-          canvas.width = Math.ceil(viewport.width);
-          canvas.height = Math.ceil(viewport.height);
-
-          await sourcePage.render({
-            canvasContext: context,
-            viewport,
-          }).promise;
-
-          const pngBytes = await canvasToPngBytes(canvas);
-          const embeddedPage = await unlockedPdf.embedPng(pngBytes);
-          const outputPage = unlockedPdf.addPage([viewport.width, viewport.height]);
-
-          outputPage.drawImage(embeddedPage, {
-            x: 0,
-            y: 0,
-            width: viewport.width,
-            height: viewport.height,
-          });
-
-          setProgress(Math.round((pageNumber / sourcePdf.numPages) * 100));
-          setStatus(`Processed page ${pageNumber} of ${sourcePdf.numPages}...`);
-        }
+        const unlockedPdf = await rebuildPdfFromRenderedPages(
+          sourcePdf,
+          (pageNumber, totalPages) => `Processed page ${pageNumber} of ${totalPages}...`
+        );
 
         outputBytes = await unlockedPdf.save();
         setStatus("Your unlocked PDF is ready to download.");
