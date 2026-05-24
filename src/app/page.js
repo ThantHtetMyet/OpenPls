@@ -211,6 +211,24 @@ export default function Home() {
     return rebuiltPdf;
   }
 
+  async function rebuildPdfByCopyingPages(fileBytes, progressMessage) {
+    const sourceDoc = await window.PDFLib.PDFDocument.load(fileBytes);
+    const rebuiltPdf = await window.PDFLib.PDFDocument.create();
+    const pageIndices = sourceDoc.getPageIndices();
+
+    for (let pageNumber = 0; pageNumber < pageIndices.length; pageNumber += 1) {
+      const [copiedPage] = await rebuiltPdf.copyPages(sourceDoc, [pageIndices[pageNumber]]);
+      rebuiltPdf.addPage(copiedPage);
+      setProgress(Math.round(((pageNumber + 1) / pageIndices.length) * 100));
+      setStatus(progressMessage(pageNumber + 1, pageIndices.length));
+    }
+
+    return {
+      rebuiltPdf,
+      pageCount: pageIndices.length,
+    };
+  }
+
   useEffect(() => {
     if (pdfJsReady && window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
@@ -289,21 +307,14 @@ export default function Home() {
       let nextFileName;
 
       if (mode === "lock") {
-        const loadingTask = window.pdfjsLib.getDocument({
-          data: fileBytes,
-        });
+        const { rebuiltPdf: lockedPdf, pageCount: lockedPageCount } =
+          await rebuildPdfByCopyingPages(
+            fileBytes,
+            (pageNumber, totalPages) => `Prepared page ${pageNumber} of ${totalPages} for locking...`
+          );
 
-        sourcePdf = await loadingTask.promise;
-        setPageCount(sourcePdf.numPages);
-        setStatus(`Rebuilding ${sourcePdf.numPages} page(s) before locking...`);
-
-        const lockedPdf = await rebuildPdfFromRenderedPages(
-          sourcePdf,
-          (pageNumber, totalPages) => `Prepared page ${pageNumber} of ${totalPages} for locking...`
-        );
-
-        setProgress(100);
-        setStatus(`Encrypting ${sourcePdf.numPages} page(s)...`);
+        setPageCount(lockedPageCount);
+        setStatus(`Encrypting ${lockedPageCount} page(s)...`);
 
         outputBytes = await lockedPdf.save({
           useObjectStreams: false,
@@ -323,6 +334,8 @@ export default function Home() {
             version: 4,
           },
         });
+
+        setProgress(100);
         setStatus("Your locked PDF is ready to download.");
         nextFileName = createOutputFileName(selectedFile.name, "locked");
       } else {
