@@ -12,7 +12,7 @@ const PDFJS_CDN =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
 const PDFJS_WORKER_CDN =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-const PDFLIB_CDN = "https://cdn.jsdelivr.net/npm/@maxwbh/pdf-lib@1.18.0/dist/pdf-lib.min.js";
+const PDFLIB_CDN = "https://cdn.jsdelivr.net/npm/pdf-lib-patch@1.18.8/cjs/index.min.js";
 const MIN_UPLOAD_OVERLAY_MS = 3000;
 
 function getDefaultStatus(mode) {
@@ -141,6 +141,24 @@ export default function Home() {
   const [pdfLibReady, setPdfLibReady] = useState(false);
   const [detectedProtectionState, setDetectedProtectionState] = useState("");
 
+  function reportDebugEvent(hypothesisId, location, msg, data = {}) {
+    // #region debug-point A:report-event
+    fetch("http://127.0.0.1:7777/event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: "locked-pdf-blank",
+        runId: "pre-fix",
+        hypothesisId,
+        location,
+        msg: `[DEBUG] ${msg}`,
+        data,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+  }
+
   function animateUploadProgress(loadId) {
     return new Promise((resolve) => {
       const startTime = window.performance.now();
@@ -229,6 +247,54 @@ export default function Home() {
     };
   }
 
+  async function inspectRenderedPagePixels(pdfBytes, pdfPassword) {
+    const loadingTask = window.pdfjsLib.getDocument({
+      data: pdfBytes,
+      password: pdfPassword,
+    });
+    let renderedPdf;
+
+    try {
+      renderedPdf = await loadingTask.promise;
+      const firstPage = await renderedPdf.getPage(1);
+      const viewport = firstPage.getViewport({ scale: 1 });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { alpha: false });
+
+      if (!context) {
+        throw new Error("Canvas is not available in this browser.");
+      }
+
+      canvas.width = Math.max(1, Math.ceil(viewport.width));
+      canvas.height = Math.max(1, Math.ceil(viewport.height));
+
+      await firstPage.render({
+        canvasContext: context,
+        viewport,
+      }).promise;
+
+      const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let nonWhitePixels = 0;
+
+      for (let index = 0; index < data.length; index += 4) {
+        if (!(data[index] === 255 && data[index + 1] === 255 && data[index + 2] === 255)) {
+          nonWhitePixels += 1;
+        }
+      }
+
+      return {
+        pageCount: renderedPdf.numPages,
+        width,
+        height,
+        nonWhitePixels,
+      };
+    } finally {
+      if (renderedPdf) {
+        await renderedPdf.destroy();
+      }
+    }
+  }
+
   useEffect(() => {
     if (pdfJsReady && window.pdfjsLib) {
       window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_CDN;
@@ -306,6 +372,17 @@ export default function Home() {
       let outputBytes;
       let nextFileName;
 
+      // #region debug-point A:lock-input
+      if (mode === "lock") {
+        reportDebugEvent("A", "page.js:handleUnlock:input", "Lock flow started", {
+          fileName: selectedFile.name,
+          inputBytesLength: fileBytes.length,
+          passwordLength: password.length,
+          firstBytes: Array.from(fileBytes.slice(0, 8)),
+        });
+      }
+      // #endregion
+
       if (mode === "lock") {
         const { rebuiltPdf: lockedPdf, pageCount: lockedPageCount } =
           await rebuildPdfByCopyingPages(
@@ -315,6 +392,12 @@ export default function Home() {
 
         setPageCount(lockedPageCount);
         setStatus(`Encrypting ${lockedPageCount} page(s)...`);
+
+        // #region debug-point B:copied-pages
+        reportDebugEvent("B", "page.js:handleUnlock:copied", "Copied pages into fresh PDF before encryption", {
+          pageCount: lockedPageCount,
+        });
+        // #endregion
 
         outputBytes = await lockedPdf.save({
           useObjectStreams: false,
@@ -338,6 +421,28 @@ export default function Home() {
         setProgress(100);
         setStatus("Your locked PDF is ready to download.");
         nextFileName = createOutputFileName(selectedFile.name, "locked");
+
+        // #region debug-point C:encrypted-output
+        reportDebugEvent("C", "page.js:handleUnlock:encrypted-output", "Encrypted PDF bytes generated", {
+          pageCount: lockedPageCount,
+          outputBytesLength: outputBytes.length,
+          outputFileName: nextFileName,
+          firstBytes: Array.from(outputBytes.slice(0, 16)),
+          lastBytes: Array.from(outputBytes.slice(Math.max(0, outputBytes.length - 16))),
+        });
+        // #endregion
+
+        // #region debug-point C:encrypted-self-check
+        try {
+          const renderedOutputInspection = await inspectRenderedPagePixels(outputBytes.slice(), password);
+          reportDebugEvent("C", "page.js:handleUnlock:encrypted-self-check", "Re-opened encrypted output for render inspection", renderedOutputInspection);
+        } catch (selfCheckError) {
+          reportDebugEvent("C", "page.js:handleUnlock:encrypted-self-check-error", "Failed to re-open encrypted output during self-check", {
+            name: selfCheckError?.name ?? "",
+            message: selfCheckError?.message ?? "",
+          });
+        }
+        // #endregion
       } else {
         const loadingTask = window.pdfjsLib.getDocument({
           data: fileBytes,
@@ -361,10 +466,28 @@ export default function Home() {
       const blob = new Blob([outputBytes], { type: "application/pdf" });
       const objectUrl = URL.createObjectURL(blob);
 
+      // #region debug-point D:download-url
+      if (mode === "lock") {
+        reportDebugEvent("D", "page.js:handleUnlock:download-url", "Download URL created for locked PDF", {
+          blobSize: blob.size,
+          outputFileName: nextFileName,
+        });
+      }
+      // #endregion
+
       downloadUrlRef.current = objectUrl;
       setDownloadUrl(objectUrl);
       setOutputFileName(nextFileName);
     } catch (error) {
+      // #region debug-point E:lock-error
+      if (mode === "lock") {
+        reportDebugEvent("E", "page.js:handleUnlock:error", "Lock flow threw an error", {
+          name: error?.name ?? "",
+          message: error?.message ?? "",
+          stackTop: typeof error?.stack === "string" ? error.stack.split("\n").slice(0, 4) : [],
+        });
+      }
+      // #endregion
       setErrorMessage(getFriendlyError(error));
       setStatus(mode === "lock" ? "The PDF could not be locked." : "The PDF could not be unlocked.");
     } finally {
