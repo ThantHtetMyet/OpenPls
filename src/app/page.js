@@ -550,22 +550,22 @@ export default function Home() {
     <>
       <Script src={PDFJS_CDN} strategy="afterInteractive" onLoad={() => setPdfJsReady(true)} />
 
-      <main className="h-screen overflow-hidden bg-[#ece9e2]">
-        <header className="border-b-[3px] border-black bg-[linear-gradient(180deg,#e7ba52_0%,#d69d29_100%)] px-4 py-4 text-center shadow-[inset_0_2px_0_0_#f8df9b]">
-          <p className="text-2xl font-black uppercase tracking-[0.18em] text-[#2a1800] drop-shadow-[2px_2px_0_rgba(255,244,200,0.55)] sm:text-4xl">
+      <main className="min-h-dvh overflow-x-hidden bg-[#ece9e2]">
+        <header className="border-b-[3px] border-black bg-[linear-gradient(180deg,#e7ba52_0%,#d69d29_100%)] px-4 py-3 text-center shadow-[inset_0_2px_0_0_#f8df9b] sm:py-4">
+          <p className="text-xl font-black uppercase tracking-[0.14em] text-[#2a1800] drop-shadow-[2px_2px_0_rgba(255,244,200,0.55)] sm:text-4xl sm:tracking-[0.18em]">
             OpenPls!
           </p>
         </header>
 
-        <section className="mx-auto flex h-[calc(100vh-88px)] w-full max-w-4xl flex-col justify-center px-4 py-4 sm:px-6">
-          <div className="mx-auto mb-4 flex w-full max-w-3xl items-center justify-between gap-3">
-            <div className="w-14 shrink-0" />
-            <div className="flex items-center justify-center gap-3">
+        <section className="mx-auto flex min-h-[calc(100dvh-76px)] w-full max-w-4xl flex-col justify-start px-5 py-3 pb-24 sm:min-h-[calc(100vh-88px)] sm:justify-center sm:px-6 sm:py-4 sm:pb-6">
+          <div className="mx-auto mb-3 flex w-full max-w-3xl items-center justify-between gap-2 sm:mb-4 sm:gap-3">
+            <div className="w-12 shrink-0 sm:w-14" />
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
               {mode ? (
                 [1, 2, 3].map((step) => (
                   <div
                     key={step}
-                    className={`border-[3px] border-black px-4 py-2 text-sm font-black uppercase tracking-[0.14em] ${
+                    className={`border-[3px] border-black px-2 py-2 text-[11px] font-black uppercase tracking-[0.08em] sm:px-4 sm:text-sm sm:tracking-[0.14em] ${
                       currentStep === step ? "bg-[#ef5a5a] text-white" : "bg-white text-black"
                     }`}
                   >
@@ -573,22 +573,22 @@ export default function Home() {
                   </div>
                 ))
               ) : (
-                <div className="border-[3px] border-black bg-white px-5 py-2 text-sm font-black uppercase tracking-[0.14em] text-black">
+                <div className="border-[3px] border-black bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-black sm:px-5 sm:text-sm sm:tracking-[0.14em]">
                   Choose Mode
                 </div>
               )}
             </div>
-            {currentStep === 0 ? <div className="w-14 shrink-0" /> : (
+            {currentStep === 0 ? <div className="w-12 shrink-0 sm:w-14" /> : (
               <button
                 type="button"
                 onClick={handleResetFlow}
                 aria-label="Refresh flow"
-                className="inline-flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center border-[3px] border-black bg-white transition hover:bg-[#f3f3f3]"
+                className="inline-flex h-12 w-12 shrink-0 cursor-pointer items-center justify-center border-[3px] border-black bg-white transition hover:bg-[#f3f3f3] sm:h-14 sm:w-14"
               >
                 <Image
                   src={reloadIcon}
                   alt=""
-                  className={`h-8 w-8 ${isResetting ? "animate-spin" : ""}`}
+                  className={`h-7 w-7 sm:h-8 sm:w-8 ${isResetting ? "animate-spin" : ""}`}
                 />
               </button>
             )}
@@ -596,15 +596,15 @@ export default function Home() {
 
           <form onSubmit={handleUnlock} className="mx-auto w-full max-w-3xl">
             {currentStep === 0 ? (
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2 md:gap-5">
                 <button
                   type="button"
                   onClick={() => handleModeSelect("unlock")}
-                  className="border-[4px] border-black bg-[#8fded3] p-6 text-left shadow-[8px_8px_0_0_#000] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+                  className="border-[4px] border-black bg-[#8fded3] p-5 text-left shadow-[5px_5px_0_0_#000] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none sm:p-6 sm:shadow-[8px_8px_0_0_#000]"
                 >
-                  <Image src={unlockModeIcon} alt="" className="h-20 w-20" />
-                  <p className="mt-5 text-2xl font-black uppercase text-black">Unlock</p>
-                  <p className="mt-3 text-sm leading-6 text-black/80">
+                  <Image src={unlockModeIcon} alt="" className="h-16 w-16 sm:h-20 sm:w-20" />
+                  <p className="mt-4 text-xl font-black uppercase text-black sm:mt-5 sm:text-2xl">Unlock</p>
+                  <p className="mt-3 text-sm leading-7 text-black/80 sm:leading-6">
                     Remove the password from a protected PDF when you already know the current password.
                   </p>
                 </button>
@@ -612,11 +612,11 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => handleModeSelect("lock")}
-                  className="border-[4px] border-black bg-[#f7d95a] p-6 text-left shadow-[8px_8px_0_0_#000] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+                  className="border-[4px] border-black bg-[#f7d95a] p-5 text-left shadow-[5px_5px_0_0_#000] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none sm:p-6 sm:shadow-[8px_8px_0_0_#000]"
                 >
-                  <Image src={lockModeIcon} alt="" className="h-20 w-20" />
-                  <p className="mt-5 text-2xl font-black uppercase text-black">Lock</p>
-                  <p className="mt-3 text-sm leading-6 text-black/80">
+                  <Image src={lockModeIcon} alt="" className="h-16 w-16 sm:h-20 sm:w-20" />
+                  <p className="mt-4 text-xl font-black uppercase text-black sm:mt-5 sm:text-2xl">Lock</p>
+                  <p className="mt-3 text-sm leading-7 text-black/80 sm:leading-6">
                     Add a new password to a PDF and download the protected version.
                   </p>
                 </button>
@@ -624,8 +624,8 @@ export default function Home() {
             ) : null}
 
             {currentStep === 1 ? (
-              <div className="border-[4px] border-black bg-[#9ec4f0] p-4 shadow-[8px_8px_0_0_#000]">
-                <div className="flex items-start justify-between gap-4">
+              <div className="border-[4px] border-black bg-[#9ec4f0] p-4 shadow-[5px_5px_0_0_#000] sm:shadow-[8px_8px_0_0_#000]">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                   <div>
                     <p className="text-sm font-black uppercase tracking-[0.18em] text-black">
                       Choose File
@@ -656,7 +656,7 @@ export default function Home() {
 
                 <label
                   htmlFor="pdf-file"
-                  className="mt-4 flex min-h-36 cursor-pointer flex-col items-center justify-center border-[4px] border-dashed border-black bg-white/35 px-6 py-6 text-center transition hover:bg-white/50"
+                  className="mt-4 flex min-h-32 cursor-pointer flex-col items-center justify-center border-[4px] border-dashed border-black bg-white/35 px-4 py-5 text-center transition hover:bg-white/50 sm:min-h-36 sm:px-6 sm:py-6"
                 >
                   <span className="text-xl font-black uppercase text-black sm:text-2xl">
                     {isPreparingFile ? "Loading PDF" : selectedFile ? "PDF Selected" : "Upload PDF"}
@@ -687,7 +687,7 @@ export default function Home() {
             ) : null}
 
             {currentStep === 2 ? (
-              <div className="border-[4px] border-black bg-[#b9e4bf] p-4 shadow-[8px_8px_0_0_#000]">
+              <div className="border-[4px] border-black bg-[#b9e4bf] p-4 shadow-[5px_5px_0_0_#000] sm:shadow-[8px_8px_0_0_#000]">
                 <p className="text-sm font-black uppercase tracking-[0.18em] text-black">Password</p>
                 <p className="mt-2 text-sm leading-6 text-black/75">
                   {mode === "lock"
@@ -714,14 +714,14 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
-                    className="inline-flex items-center justify-center border-[4px] border-black bg-white px-6 py-3 text-base font-black uppercase text-black"
+                    className="inline-flex w-full items-center justify-center border-[4px] border-black bg-white px-6 py-3 text-base font-black uppercase text-black sm:w-auto"
                   >
                     Back
                   </button>
                   <button
                     type="submit"
                     disabled={isProcessing}
-                    className="inline-flex items-center justify-center border-[4px] border-black bg-[#58b4e6] px-6 py-3 text-base font-black uppercase text-black disabled:cursor-not-allowed disabled:bg-[#9ccde6]"
+                    className="inline-flex w-full items-center justify-center border-[4px] border-black bg-[#58b4e6] px-6 py-3 text-base font-black uppercase text-black disabled:cursor-not-allowed disabled:bg-[#9ccde6] sm:w-auto"
                   >
                     {isProcessing ? (mode === "lock" ? "Locking..." : "Unlocking...") : mode === "lock" ? "Lock PDF" : "Unlock PDF"}
                   </button>
@@ -730,7 +730,7 @@ export default function Home() {
             ) : null}
 
             {currentStep === 3 ? (
-              <div className="border-[4px] border-black bg-[#f7d95a] p-4 shadow-[8px_8px_0_0_#000]">
+              <div className="border-[4px] border-black bg-[#f7d95a] p-4 shadow-[5px_5px_0_0_#000] sm:shadow-[8px_8px_0_0_#000]">
                 <p className="text-sm font-black uppercase tracking-[0.18em] text-black">Result</p>
                 <p className="mt-3 text-sm leading-6 text-black/80">{status}</p>
                 <div className="mt-4 h-4 border-[3px] border-black bg-white">
@@ -761,14 +761,14 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setCurrentStep(2)}
-                    className="inline-flex items-center justify-center border-[4px] border-black bg-white px-6 py-3 text-base font-black uppercase text-black"
+                    className="inline-flex w-full items-center justify-center border-[4px] border-black bg-white px-6 py-3 text-base font-black uppercase text-black sm:w-auto"
                   >
                     Back
                   </button>
                   <button
                     type="button"
                     onClick={handleImmediateReset}
-                    className="inline-flex items-center justify-center border-[4px] border-black bg-[#f7db62] px-6 py-3 text-base font-black uppercase text-black"
+                    className="inline-flex w-full items-center justify-center border-[4px] border-black bg-[#f7db62] px-6 py-3 text-base font-black uppercase text-black sm:w-auto"
                   >
                     Start Over
                   </button>
@@ -781,7 +781,7 @@ export default function Home() {
         {showInfo ? (
           <div
             ref={infoPanelRef}
-            className="fixed bottom-20 left-4 z-50 flex max-w-[calc(100vw-2rem)] items-center border-[3px] border-black bg-white px-4 py-3 text-sm font-bold text-black shadow-[6px_6px_0_0_#000] sm:left-6"
+            className="fixed bottom-20 left-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap items-center border-[3px] border-black bg-white px-4 py-3 text-sm font-bold text-black shadow-[5px_5px_0_0_#000] sm:left-6 sm:shadow-[6px_6px_0_0_#000]"
           >
             <span>Version 0.1.0 | Developer: </span>
             <a
@@ -807,7 +807,7 @@ export default function Home() {
 
         {isPreparingFile ? (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/25 px-4">
-            <div className="w-full max-w-2xl border-[4px] border-black bg-[#f7d95a] p-6 shadow-[10px_10px_0_0_#000]">
+            <div className="w-full max-w-2xl border-[4px] border-black bg-[#f7d95a] p-4 shadow-[6px_6px_0_0_#000] sm:p-6 sm:shadow-[10px_10px_0_0_#000]">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-black">
                 Loading PDF
               </p>
